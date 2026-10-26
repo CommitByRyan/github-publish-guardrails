@@ -1,7 +1,7 @@
 ---
 name: github-publish-guardrails
-description: 'Use this skill whenever the user mentions publishing code to GitHub or any remote repository — including phrases like "上传到 GitHub", "提交", "推送 (push)", "发布 (release)", "打 tag", "开 PR", "部署到 Pages", "新增仓库", "新项目上线", or writing Commit/Release Notes, or asking to update the personal blog / 项目索引 after shipping something. It enforces the project owner''s hard publishing rules: never alter git identity, never add AI co-author trails, never inject "AI-generated" tags/badges into metadata or docs, preserve the human copyright holder, write commit/PR/release text in first person or Conventional Commits focused on the change itself, and keep the personal site''s project index in sync after every new or renamed repository. This skill is a guardrail that must be checked before any push, tag, PR, or release action.'
-version: 1.1.0
+description: 'Use this skill whenever the user mentions publishing code to GitHub or any remote repository — including phrases like "上传到 GitHub", "提交", "推送 (push)", "发布 (release)", "打 tag", "开 PR", "部署到 Pages", "新增仓库", "新项目上线", or writing Commit/Release Notes, or asking to update the personal blog / 项目索引 after shipping something. It enforces the project owner''s hard publishing rules: never alter git identity, never add AI co-author trails, never inject "AI-generated" tags/badges into metadata or docs, preserve the human copyright holder, write commit/PR/release text in first person or Conventional Commits focused on the change itself, and keep every related personal-site project index surface in sync after every new, renamed, updated, or deleted repository. It must create missing project tables instead of updating only prose, and a publish is not complete until all required index surfaces and counts pass the final audit. This skill is a guardrail that must be checked before any push, tag, PR, or release action.'
+version: 1.2.0
 agent_created: true
 ---
 
@@ -61,12 +61,13 @@ Commit / PR 描述 / Release Notes，或**新建 / 更名 / 删除仓库、新�
 
 ---
 
-## 规则 6 — 发布后同步个人站点（项目索引）
+## 规则 6 — 发布后同步全部关联项目文档
 
 **每次新建仓库、项目实质更新、仓库更名或删除，必须在同一次发布流程内更新
-个人站点的项目索引。** 项目上线而站点不知道，等于对外不存在。
+个人站点的全部关联项目索引。** 项目上线而任一主要入口仍缺失，等于对外不存在。
 
-以 `CommitByRyan.github.io` 的现有结构为例，机械动作是这四步：
+以 `CommitByRyan.github.io` 的现有结构为例，以下位置属于同一个发布事务，
+不能只完成其中一部分后宣告结束：
 
 ### 6.1 项目总览页 `docs/projects.md`
 
@@ -79,20 +80,52 @@ Commit / PR 描述 / Release Notes，或**新建 / 更名 / 删除仓库、新�
 
 ### 6.2 首页 `docs/README.md`
 
-- **数字条**中的「公开仓库」数量同步
-- **项目版块卡片**：分组数量变化时增删卡片，并重排 `01 / Category` 编号
+- **数字条**中的「公开仓库」精确数量同步
+- **项目版块导语**中的数量与分组数同步
+- **项目版块卡片**：已有分组新增仓库时，同步该卡的仓库数量；新增或删除分组时，
+  增删卡片并重排 `01 / Category` 编号
+- 「在做的事」是精选展示区，不要求收录每个仓库；项目是否进入该区单独判断，
+  不能用它代替项目索引
 
 ### 6.3 仓库根 `README.md`
 
-- 项目表补一行
-- 文中若写了仓库数量，同步
+- 必须存在一份**完整项目表**，默认列出全部对外公开项目；新项目增加一行，
+  更名项目修改原有行，删除项目移除对应行
+- 项目表至少包含仓库链接、类别、技术栈和状态
+- 若根 README 原本只有说明文字而没有项目表，**必须先创建项目表**，不能只修改
+  一段概述后认为已经同步
+- 分类概述、项目数量和分组数若被写死，必须与项目页一致
 
-### 6.4 验证
+### 6.4 条件同步项
+
+- `docs/_sidebar.md`：仅在新增、更名或删除可浏览文档页面时同步；普通项目入索引
+  不需要强行修改侧边栏
+- 其他个人入口（GitHub Profile、导航页等）：仅当其中已存在项目列表时同步对应
+  条目；不要为了形式统一新建无关入口
+
+### 6.5 验证
 
 - Pages 构建状态为 `built` 且 `error` 为空
-- 目标页返回 200：`/`、`/projects.md`
+- 目标页返回 200：`/`、`/README.md`、`/projects.md` 和根仓库 README
+- 首页数字条、导语数量、分类卡数量与项目页速览表能够相互对上
+- 新项目名称在 `docs/projects.md` 的速览表和分组正文中都存在
+- 新项目名称在站点根 `README.md` 的完整项目表中存在
 - 新增的相对链接都有落点。注意 `_posts/` 下文件的相对基准是 `_posts/`，
   跨目录要写 `../`；死链检查应跳过代码块围栏，否则示例会被误判
+
+### 完整性定义（Definition of Done）
+
+新建公开项目时，只有以下条件全部成立，发布才能视为完成：
+
+1. GitHub 上的新仓库已创建并推送成功；
+2. `docs/projects.md` 速览表有且只有一个对应条目；
+3. `docs/projects.md` 对应分组的正文中有完整项目小节；
+4. `docs/README.md` 的总数、导语、分组卡片数量与分类编号全部一致；
+5. 站点根 `README.md` 的完整项目表包含该项目；表不存在时已经补建；
+6. Pages 构建成功，公开页面和链接验证通过；
+7. 站点提交与项目仓库提交保持独立。
+
+任一条件缺失时，发布状态是**未完成**，不得用“项目已经推上去了”代替站点同步。
 
 ### 数量是易腐数据
 
@@ -113,14 +146,14 @@ Commit / PR 描述 / Release Notes，或**新建 / 更名 / 删除仓库、新�
 **不要把站点改动混进项目仓库的提交**——它们服务于不同目的，
 混在一起会让两边的历史都变脏。
 
-站点提交用 `docs:` 开头，说明收录了哪个项目：
+站点提交用 `docs:` 开头，说明收录了哪个项目，并列出所有已同步入口：
 
 ```
 docs: 项目总览收录 quiet-tech-style 设计规范
 
 - 项目页新增「三、设计规范」分组，原课程项目改为第四节
 - 首页数字条更新为 9 个公开仓库，项目版块新增卡片
-- 根 README 同步仓库数与分组
+- 根 README 完整项目表与分类概述同步
 ```
 
 ---
@@ -144,9 +177,11 @@ docs: 项目总览收录 quiet-tech-style 设计规范
 **同步类**
 
 - [ ] 若本次新建 / 更名 / 删除仓库，或项目状态变化：
-      `docs/projects.md`、首页数字条与项目卡片、根 README 均已同步
-- [ ] 写了数量的，数量与实际一致（或已改为 `N+`）
-- [ ] 站点 Pages 构建为 `built`，项目页返回 200
+      `docs/projects.md` 速览与正文、首页总数与分类卡、根 README 完整项目表均已同步
+- [ ] 根 README 没有项目表时，已经补建而不是只改说明文字
+- [ ] 写了数量的，首页数字条、导语、分类卡与实际项目数一致（或已改为 `N+`）
+- [ ] 新增项目名在两个主要项目索引中都能检索到，分类与状态没有互相矛盾
+- [ ] 站点 Pages 构建为 `built`，`/`、`/README.md`、`/projects.md` 均返回 200
 - [ ] 站点提交独立成 commit，未混入项目仓库
 
 任一项不通过 → **停止发布动作**，向用户说明问题并等待确认，不得强行推送。
@@ -192,7 +227,7 @@ docs: 项目总览收录 quiet-tech-style 设计规范
 
 - 项目页新增「三、设计规范」分组，原课程项目改为第四节
 - 首页数字条更新为 9 个公开仓库，项目版块新增卡片
-- 根 README 同步仓库数与分组
+- 根 README 完整项目表与分类概述同步
 ```
 
 ### 违规的站点同步（禁止）
@@ -210,7 +245,8 @@ feat: 新增 quiet-tech-style 仓库
 - 本技能为**用户级守门员**，对所有项目生效。
 - 规则 1–5 与具体仓库无关；无论提交的是 `fanqie-writer-mcp`、`Ryan-links`
   还是其他任何仓库，规则一致。
-- 规则 6 绑定用户个人站点 `CommitByRyan.github.io` 的项目索引；
-  若站点结构变更，按等价步骤执行（索引入口、数量、分组编号、构建验证）。
+- 规则 6 绑定用户个人站点 `CommitByRyan.github.io` 的全部关联项目索引；
+  若站点结构变更，按等价步骤执行（完整项目表、项目页、首页、数量、分组编号、
+  构建与链接验证）。
 - 当用户仅做本地开发、不发布时，本技能不强制触发；但一旦涉及向远端
   推送或公开发布，必须先过此关卡。
